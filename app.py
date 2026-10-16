@@ -1,3 +1,4 @@
+#NOTE: these comments are for the understanding the code and to sort it based on its function.
 import streamlit as st
 import requests
 import hashlib
@@ -21,7 +22,7 @@ def fetch_website_text(url):
         st.error(f"❌ Network Pipeline Interrupt: {e}")
         return None
 
-# --- ADVANCED WINDOW PORTAL CONFIGURATIONS ---
+#window portal configurations
 st.set_page_config(
     page_title="Engine | Web Monitor", 
     page_icon="🔍", 
@@ -93,7 +94,7 @@ with st.container(border=True):
                             st.toast("⚠️ MODIFICATION ALERT FLAGGED!", icon="🚨")
                             st.error("🚨 ALERT: Document integrity mismatch caught on the page tree structure!")
                             
-                            # Execute line-by-line structural diff sequence evaluation maps
+                            # Execute line-by-line structural "diff" sequence evaluation maps
                             diff = difflib.ndiff(st.session_state.baseline_lines, current_lines)
                             diff_output = [c for c in diff if c.startswith('+ ') or c.startswith('- ')]
                             
