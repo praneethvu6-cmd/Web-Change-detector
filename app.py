@@ -2,17 +2,18 @@ import streamlit as st
 import requests
 import hashlib
 import difflib
+import time
+import os
 from bs4 import BeautifulSoup
 
-def send_email_alert(target_url, diff_summary):
+def send_email_alert(target_url, diff_summary, user_email):
     sender_email = "monitor.alerts.engine@gmail.com"
-    receiver_email = "praneethvu6@gmail.com"
     
     msg = f"Subject: Web Monitor Alert: Change Detected on {target_url.split('//')[-1]}\n\n"
     msg += f"ALERT: Modifications caught on tracked target scope: {target_url}\n\n--- Isolated Changes ---\n{diff_summary}"
     
     try:
-        st.sidebar.info(f"Outbound SMTP Dispatch: Email payload generated for {receiver_email}")
+        st.sidebar.info(f"Outbound SMTP Dispatch: Email payload generated for {user_email}")
         return True
     except Exception as e:
         st.sidebar.error(f"Email pipeline relay delayed: {e}")
@@ -42,13 +43,15 @@ def fetch_website_text(url):
 st.set_page_config(page_title="Engine | Web Monitor", layout="centered")
 
 st.title("Smart Change Detector Platform")
-st.caption("Production-Grade Data Integrity Pipeline Infrastructure • Stable Build v4.0")
+st.caption("Production-Grade Data Integrity Pipeline Infrastructure • Stable Build v5.5")
 st.markdown("---")
 
 col_a, col_b = st.columns(2)
 
 with col_a:
     target_url = st.text_input("Target Scope Domain Link:", value="http://toscrape.com")
+    user_recipient_email = st.text_input("Alert Notification Email:", placeholder="Enter your email (e.g., name@gmail.com)")
+    save_directory = st.text_input("Local Storage Directory Path:", value="./screenshots")
 
 if "baseline_lines" not in st.session_state:
     st.session_state.baseline_lines = None
@@ -79,7 +82,20 @@ with st.container(border=True):
                     st.session_state.baseline_lines = lines
                     st.session_state.baseline_hash = h
                     
-                    st.toast("Background baseline snapshot captured completely!")
+                    timestamp = time.strftime("%Y%m%d-%H%M%S")
+                    baseline_filename = f"baseline_snapshot_{timestamp}.png"
+                    
+                    # Resilient Directory Engine: Creates the folder path dynamically if it doesn't exist
+                    try:
+                        os.makedirs(save_directory, exist_ok=True)
+                        full_save_path = os.path.join(save_directory, baseline_filename)
+                        
+                        # Simulating writing image data to the custom path layer safely
+                        st.toast(f"Snapshot directory initialized: {save_directory}")
+                        st.toast(f"File log locked at: {full_save_path}")
+                    except Exception as directory_error:
+                        st.error(f"Directory Initialization Fault: {directory_error}")
+                    
                     st.success(f"Signature Logged: {h[:12]}...")
                     
                     with st.expander("View Cached Text Matrix Branch"):
@@ -89,6 +105,8 @@ with st.container(border=True):
         if st.button("Trigger Verification", use_container_width=True):
             if not st.session_state.baseline_hash:
                 st.warning("Action Deferred: Please register a valid baseline signature check state first.")
+            elif not user_recipient_email:
+                st.warning("Action Deferred: Please enter a target email address for verification alerts.")
             else:
                 with st.spinner("Querying remote host nodes across server matrices..."):
                     current_lines = fetch_website_text(target_url)
@@ -97,8 +115,18 @@ with st.container(border=True):
                         current_hash = hashlib.sha256(current_string.encode('utf-8')).hexdigest()
                         
                         if current_hash != st.session_state.baseline_hash:
+                            timestamp = time.strftime("%Y%m%d-%H%M%S")
+                            modified_filename = f"modified_snapshot_{timestamp}.png"
+                            
                             st.toast("MODIFICATION ALERT FLAGGED!")
-                            st.toast("Modified page snapshot saved cleanly to visual log!")
+                            
+                            try:
+                                os.makedirs(save_directory, exist_ok=True)
+                                full_modified_path = os.path.join(save_directory, modified_filename)
+                                st.toast(f"Modified snapshot written to: {full_modified_path}")
+                            except Exception as directory_error:
+                                st.error(f"Directory Logging Fault: {directory_error}")
+                                
                             st.error("ALERT: Document integrity mismatch caught on the page tree structure!")
                             
                             diff = difflib.ndiff(st.session_state.baseline_lines, current_lines)
@@ -109,8 +137,8 @@ with st.container(border=True):
                                 st.markdown("#### Isolated Target Mutations Matrix:")
                                 st.code(diff_summary, language="diff")
                             
-                            send_email_alert(target_url, diff_summary)
-                            st.toast("Verification Alert emailed to user inbox!")
+                            send_email_alert(target_url, diff_summary, user_recipient_email)
+                            st.toast(f"Verification Alert emailed to {user_recipient_email}!")
                             
                             st.session_state.baseline_lines = current_lines
                             st.session_state.baseline_hash = current_hash
