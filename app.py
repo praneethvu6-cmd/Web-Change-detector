@@ -5,13 +5,29 @@ import difflib
 import time
 import io
 from bs4 import BeautifulSoup
+from PIL import Image, ImageDraw, ImageFont
+
+def generate_snapshot_image(status_text, url, timestamp):
+    """Dynamically renders a true, uncorrupted PNG graphic image stream."""
+    img = Image.new("RGB", (800, 400), color="#0e1117")
+    draw = ImageDraw.Draw(img)
+    
+    # Render clean status cards and tracking boundaries onto the graphics canvas
+    draw.rectangle([20, 20, 780, 380], outline="#30363d", width=2)
+    draw.text((40, 50), "🔍 WEB CHANGE DETECTOR SNAPSHOT", fill="#ffffff")
+    draw.text((40, 120), f"Status: {status_text}", fill="#2ea44f" if "Baseline" in status_text else "#d62728")
+    draw.text((40, 180), f"Target URL: {url}", fill="#c9d1d9")
+    draw.text((40, 240), f"Log Time: {timestamp}", fill="#8b949e")
+    draw.text((40, 300), f"Engine Build: Stable Production v6.5", fill="#8b949e")
+    
+    byte_buffer = io.BytesIO()
+    img.save(byte_buffer, format="PNG")
+    return byte_buffer.getvalue()
 
 def send_email_alert(target_url, diff_summary, user_email):
     sender_email = "monitor.alerts.engine@gmail.com"
-    
     msg = f"Subject: Web Monitor Alert: Change Detected on {target_url.split('//')[-1]}\n\n"
     msg += f"ALERT: Modifications caught on tracked target scope: {target_url}\n\n--- Isolated Changes ---\n{diff_summary}"
-    
     try:
         st.sidebar.info(f"Outbound SMTP Dispatch: Email payload generated for {user_email}")
         return True
@@ -26,15 +42,11 @@ def fetch_website_text(url):
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.5'
         }
-        
         response = requests.get(url, headers=headers, timeout=5)
         response.raise_for_status()
-        
         soup = BeautifulSoup(response.text, 'html.parser')
-        
         for element in soup(["script", "style", "header", "footer", "nav"]):
             element.decompose()
-            
         return [line.strip() for line in soup.get_text().splitlines() if line.strip()]
     except Exception as e:
         st.error(f"Network Pipeline Failure: {e}")
@@ -43,7 +55,7 @@ def fetch_website_text(url):
 st.set_page_config(page_title="Engine | Web Monitor", layout="centered")
 
 st.title("Smart Change Detector Platform")
-st.caption("Production-Grade Data Integrity Pipeline Infrastructure • Stable Build v6.0")
+st.caption("Production-Grade Data Integrity Pipeline Infrastructure • Stable Build v6.5")
 st.markdown("---")
 
 col_a, col_b = st.columns(2)
@@ -86,12 +98,13 @@ with st.container(border=True):
                     st.session_state.baseline_hash = h
                     
                     timestamp = time.strftime("%Y%m%d-%H%M%S")
+                    readable_time = time.strftime("%X %x")
                     st.session_state.latest_filename = f"baseline_snapshot_{timestamp}.png"
                     
-                    # Generates a clean mock snapshot byte buffer profile to safely feed the download engine
-                    mock_image_buffer = io.BytesIO()
-                    mock_image_buffer.write(b"PNG_DATA_STREAM_LAYER_MOCK")
-                    st.session_state.latest_screenshot_data = mock_image_buffer.getvalue()
+                    # Generates a true, uncorrupted image stream using Pillow
+                    st.session_state.latest_screenshot_data = generate_snapshot_image(
+                        "INITIAL BASELINE SNAPSHOT REGISTERED", target_url, readable_time
+                    )
                     
                     st.toast("Background baseline snapshot processed successfully!")
                     st.success(f"Signature Logged: {h[:12]}...")
@@ -114,11 +127,13 @@ with st.container(border=True):
                         
                         if current_hash != st.session_state.baseline_hash:
                             timestamp = time.strftime("%Y%m%d-%H%M%S")
+                            readable_time = time.strftime("%X %x")
                             st.session_state.latest_filename = f"modified_snapshot_{timestamp}.png"
                             
-                            mock_image_buffer = io.BytesIO()
-                            mock_image_buffer.write(b"PNG_DATA_STREAM_LAYER_MODIFIED_MOCK")
-                            st.session_state.latest_screenshot_data = mock_image_buffer.getvalue()
+                            # Generates an uncorrupted modification alert image stream
+                            st.session_state.latest_screenshot_data = generate_snapshot_image(
+                                "🚨 INTEGRITY MODIFICATION FLAGGED ALERT", target_url, readable_time
+                            )
                             
                             st.toast("MODIFICATION ALERT FLAGGED!")
                             st.error("ALERT: Document integrity mismatch caught on the page tree structure!")
@@ -140,12 +155,11 @@ with st.container(border=True):
                             st.toast("Verification Complete: Stable Data Stream")
                             st.success("Verified: Target payload elements completely match baseline signatures.")
 
-# Dynamic Manual Download Console Widget Tray
 if st.session_state.latest_screenshot_data is not None:
     st.markdown("---")
     with st.container(border=True):
         st.markdown("### 📥 Download Caching Terminal")
-        st.write("Click the button below to open your computer's native file window explorer to manually save your snapshot.")
+        st.write("Click below to save your uncorrupted tracking snapshot directly to your personal device explorer.")
         st.write("")
         st.download_button(
             label="💾 Save Screenshot to Personal Device",
